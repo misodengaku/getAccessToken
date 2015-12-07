@@ -1,0 +1,16 @@
+%div
+  %p
+    以下のボタンをクリックしてTwitterの認証ページを開き、認証を行ってください。
+
+  %input{:type => 'button', :onclick => "window.open('#{url}')", :value => 'Twitterの認証ページを開く'}  
+
+
+  %p
+    認証が済んだら、表示されたPINコードを以下のフォームに入力し、get access_tokenボタンをクリックしてください。
+
+
+%form{:action => '/access_token_pin', :method => 'POST'}
+  %div
+    PIN: 
+    %input.b{:type => 'text', :name => 'pin'}
+  %input.button{:type => 'submit', :value => 'get acess_token'}

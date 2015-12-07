@@ -54,23 +54,46 @@ end
 
 
 post '/request_token' do
-  callback_url = "#{base_url}/access_token"
-  request_token = oauth_consumer(params[:consumer_key], params[:consumer_secret]).get_request_token(:oauth_callback => callback_url)
+  if params[:mode] == 'callback'
+    # Callback
+    callback_url = "#{base_url}/access_token_callback"
+    request_token = oauth_consumer(params[:consumer_key], params[:consumer_secret]).get_request_token(:oauth_callback => callback_url)
+  else
+    # PIN
+    request_token = oauth_consumer(params[:consumer_key], params[:consumer_secret]).get_request_token()
+  end
   session[:request_token] = request_token.token
   session[:request_token_secret] = request_token.secret
   session[:consumer_key] = params[:consumer_key]
   session[:consumer_secret] = params[:consumer_secret]
-  redirect request_token.authorize_url
+  if params[:mode] == 'callback'
+    redirect request_token.authorize_url
+  else
+    haml :pin_input, :locals => {:url => request_token.authorize_url}
+  end
 end
 
 
-get '/access_token' do
+get '/access_token_callback' do
   request_token = OAuth::RequestToken.new(
     oauth_consumer(session[:consumer_key], session[:consumer_secret]), session[:request_token], session[:request_token_secret])
   begin
     @access_token = request_token.get_access_token({},
       :oauth_token => params[:oauth_token],
       :oauth_verifier => params[:oauth_verifier])
+  rescue OAuth::Unauthorized => @exception
+    return erb %{oauth failed: <%=h @exception.message %>}
+  end
+  @screen_name = get_screen_name(@access_token)
+  haml :access_token
+end
+
+post '/access_token_pin' do
+  request_token = OAuth::RequestToken.new(
+    oauth_consumer(session[:consumer_key], session[:consumer_secret]), session[:request_token], session[:request_token_secret])
+  begin
+    @access_token = request_token.get_access_token({},
+      :oauth_verifier => params[:pin])
   rescue OAuth::Unauthorized => @exception
     return erb %{oauth failed: <%=h @exception.message %>}
   end
